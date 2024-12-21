@@ -208,13 +208,6 @@ def convert_df_to_emp_view(df):
     # Step 2: Sort by `From_Time` in ascending order
     df = df.sort_values(by="From_Time")
 
-    # Step 3: Convert to AM/PM format
-    def convert_time_format(time_obj):
-        return time_obj.strftime("%I:%M%p").lstrip("0")  # Remove leading 0 for hours
-    df["From_Time"] = df["From_Time"].apply(convert_time_format)
-    df["To_Time"] = df["To_Time"].apply(convert_time_format)
-    print("Data sorting and formating Successfull")
-
     # 4. Convert to dictionary
     dynamo_db_input=dict()
 
@@ -335,7 +328,13 @@ def convert_df_to_emp_view(df):
 
     # Create the merged DataFrame
     merged_df = pd.DataFrame(merged_rows)
-
+    
+    def convert_time_format(time_obj):
+        return time_obj.strftime("%I:%M%p").lstrip("0")  # Remove leading 0 for hours
+    merged_df["TimeIn"] = merged_df["TimeIn"].apply(convert_time_format)
+    merged_df["TimeOut"] = merged_df["TimeOut"].apply(convert_time_format)
+    print("Data sorting and formating Successfull")
+    print("Employee view created")
     return merged_df
 
 
