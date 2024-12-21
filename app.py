@@ -1,173 +1,99 @@
-import boto3
-from flask import Flask, request, jsonify, render_template, send_file
 import os
-from dotenv import load_dotenv
-from datetime import datetime
+from flask import Flask, request, jsonify, render_template, send_file, redirect, url_for
+from werkzeug.utils import secure_filename
+import subprocess
 import pandas as pd
-from sqlalchemy import create_engine
-from io import BytesIO
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Access AWS credentials and region
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-
-# Database connection
-DB_URL = "enter your connection DB URL"
-engine = create_engine(DB_URL)
-print("RDS DATABSE ENGINE CONNECTED")
-
+# Initialize Flask app
 app = Flask(__name__)
 
-# S3 client setup
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-)
-
-# Bucket name and folder where files will be uploaded
-S3_BUCKET_NAME = 'bookstore-scheduling-bucket'
-S3_FOLDER = 'Input/'
-
-# Dictionary to simulate storage for uploaded files
-uploaded_files = {
-    'daily_employee_files': [],
-    'daily_shift_files': []
-}
+# Input and output directories
+INPUT_FOLDER = '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/00_Input/'
+OUTPUT_FOLDER = '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/01_Output/'
 
 # Route to render the upload form
 @app.route('/')
 def home():
-    return render_template('upload_form.html')  # This will render the HTML form
+    return render_template('upload_form.html')  # Render the HTML form for uploads
 
 # File upload route
 @app.route('/upload-files', methods=['POST'])
 def upload_files():
     # Check if both required files are present in the request
     if 'daily_employee_files' not in request.files or 'daily_shift_files' not in request.files:
-        return jsonify({"error": "Both 'Daily Employee Availability' and 'Daily Shift Requirements' files are required."}), 400
+        return jsonify({"error": "Both 'Employee Availability' and 'Shift Requirements' files are required."}), 400
 
-    # Retrieve multiple files
-    daily_employee_files = request.files.getlist('daily_employee_files')
-    daily_shift_files = request.files.getlist('daily_shift_files')
+    # Retrieve files
+    employee_availability_file = request.files['daily_employee_files']
+    shift_requirements_file = request.files['daily_shift_files']
 
-    # Retrieve the shift date from the form
-    shift_date = request.form.get('shift_date')
-    
-    if not shift_date:
-        return jsonify({"error": "Shift date is required."}), 400
-
-    # Convert the shift date to a proper format (e.g., YYYY-MM-DD)
+    # Save files locally
     try:
-        formatted_date = datetime.strptime(shift_date, '%Y-%m-%d').strftime('%Y-%m-%d')
-    except ValueError:
-        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
+        emp_file_path = os.path.join(INPUT_FOLDER, secure_filename('01_Emp_Availability_Initial.xlsx'))
+        shift_file_path = os.path.join(INPUT_FOLDER, secure_filename('02_Emp_Count_Requirement.xlsx'))
 
-    # Validate file content (ensure files are provided)
-    if not daily_employee_files or not daily_shift_files:
-        return jsonify({"error": "One or both file sets are empty."}), 400
+        employee_availability_file.save(emp_file_path)
+        shift_requirements_file.save(shift_file_path)
 
-    # Upload the files to S3 with the combined date in the file name
-    for file in daily_employee_files + daily_shift_files:
-        # Determine the correct folder based on the file type
-        if file in daily_employee_files:
-            folder = 'Daily Employee Availability/'
-        else:
-            folder = 'Daily Shift Requirements/'
-
-        # Generate a unique file name using the folder, file name, and shift date
-        s3_file_name = os.path.join(S3_FOLDER, folder, f"{formatted_date}_{file.filename}")
-
-        try:
-            # Convert the file to CSV if it is an .xlsx file
-            if file.filename.endswith('.xlsx'):
-                # Read the Excel file into a DataFrame
-                df = pd.read_excel(file)
-                
-                # Create a temporary CSV file
-                csv_file_name = f"/tmp/{formatted_date}_{os.path.splitext(file.filename)[0]}.csv"
-                df.to_csv(csv_file_name, index=False)
-
-                # Upload the CSV file to S3
-                with open(csv_file_name, 'rb') as csv_file:
-                    s3_client.upload_fileobj(csv_file, S3_BUCKET_NAME, s3_file_name.replace('.xlsx', '.csv'))
-
-                print(f"File {file.filename} converted to CSV and uploaded successfully to S3 at {s3_file_name.replace('.xlsx', '.csv')}.")
-                os.remove(csv_file_name)  # Clean up temporary file
-            else:
-                # Upload the original file to S3
-                s3_client.upload_fileobj(file, S3_BUCKET_NAME, s3_file_name)
-                print(f"File {file.filename} uploaded successfully to S3 at {s3_file_name}.")
-
-            # Store the filename in the dictionary to simulate storage
-            if file in daily_employee_files:
-                uploaded_files['daily_employee_files'].append(s3_file_name)
-            else:
-                uploaded_files['daily_shift_files'].append(s3_file_name)
-
-        except Exception as e:
-            return jsonify({"error": f"Error uploading file {file.filename}: {e}"}), 500
-
-    # Return success message once both file sets are uploaded
-    return jsonify({"message": f"{len(daily_employee_files)} Daily Employee Availability files and {len(daily_shift_files)} Daily Shift Requirements files uploaded successfully to S3!"}), 200
-
-
-@app.route('/retrieve-files', methods=['POST'])
-def retrieve_files():
-    # Get the date from the form
-    selected_date = request.form.get('date')
-
-    # Validate the date
-    if not selected_date:
-        return jsonify({"error": "Date is required."}), 400
-
-    try:
-        # Query the database
-        query = "SELECT * FROM scheduled.final_allocation"
-        with engine.connect() as conn:
-            sql_query = pd.read_sql(
-                sql=query,
-                con=conn.connection
-            )
-        df = pd.DataFrame(sql_query)
-        # Convert the DataFrame to HTML for rendering
-        table_html = df.to_html(classes='table table-bordered', index=False)
-        return render_template('retrieve_results.html', table_html=table_html)
-
+        print(f"Files saved successfully: {emp_file_path}, {shift_file_path}")
     except Exception as e:
-        return render_template('error.html', error_message=str(e))
+        return jsonify({"error": f"Error saving files: {e}"}), 500
 
-# Route to download Excel
-@app.route('/download-excel')
-def download_excel():
+    # Trigger the `test.py` script for processing
     try:
-        # Query the database
-        query = "SELECT * FROM scheduled.final_allocation"
-        with engine.connect() as conn:
-            sql_query = pd.read_sql(
-                sql=query,
-                con=conn.connection
-            )
-        df = pd.DataFrame(sql_query)
+        subprocess.run(['python', '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/Code/test.py'], check=True) ##TODO
+        print("Processing script executed successfully.")
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Error running processing script: {e}"}), 500
 
-        # Create an Excel file
-        output = BytesIO()
-        df.to_excel(output, index=False, engine='openpyxl')
-        output.seek(0)
+    # Redirect to the results page after processing is complete
+    return redirect(url_for('display_results'))
 
-        return send_file(
-            output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name='schedule.xlsx'
+# Route to display results as tables
+@app.route('/results')
+def display_results():
+    try:
+        # Paths to the output files
+        final_allocation_path = os.path.join(OUTPUT_FOLDER, 'Final_Allocation.xlsx')
+        emp_view_path = os.path.join(OUTPUT_FOLDER, 'Final_Allocation_Emp_View.xlsx')
+
+        # Verify files exist
+        if not os.path.exists(final_allocation_path) or not os.path.exists(emp_view_path):
+            return jsonify({"error": "Output files not found. Please ensure processing completed successfully."}), 404
+
+        # Read Excel files into Pandas DataFrames
+        final_allocation_df = pd.read_excel(final_allocation_path)
+        emp_view_df = pd.read_excel(emp_view_path)
+
+        # Debugging: Print first few rows of DataFrames
+        print("Final Allocation DataFrame:")
+        print(final_allocation_df.head())
+        print("Employee View DataFrame:")
+        print(emp_view_df.head())
+
+        # Render results in a template
+        return render_template(
+            'results.html',
+            final_allocation=final_allocation_df.to_html(classes='table table-striped', index=False),
+            emp_view=emp_view_df.to_html(classes='table table-striped', index=False),
+            final_allocation_file='Final_Allocation.xlsx',
+            emp_view_file='Final_Allocation_Emp_View.xlsx'
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    
+        return jsonify({"error": f"Error displaying results: {e}"}), 500
+
+
+# Route to download an individual file
+@app.route('/download/<filename>', methods=['GET'])
+def download_file(filename):
+    try:
+        file_path = os.path.join(OUTPUT_FOLDER, filename)
+        if not os.path.exists(file_path):
+            return jsonify({"error": "File not found."}), 404
+
+        return send_file(file_path, as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": f"Error downloading file: {e}"}), 500
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
-
-
+    app.run(debug=True, host='127.0.0.1', port=5000)

@@ -49,8 +49,7 @@
             display: block;
         }
 
-        .form-section input[type="file"],
-        .form-section input[type="date"] {
+        .form-section input[type="file"] {
             font-size: 0.95rem;
             padding: 10px;
             border: 1px solid #CFB87C; /* CU Gold */
@@ -98,39 +97,6 @@
         .footer p {
             margin: 0;
         }
-
-        .date-section {
-            text-align: center;
-        }
-
-        .date-section input {
-            font-size: 0.95rem;
-            padding: 10px;
-            border: 1px solid #CFB87C; /* CU Gold */
-            border-radius: 6px;
-            width: 60%;
-            max-width: 300px;
-            background-color: #CFB87C; /* CU Gold */
-            color: #000000; /* Black text */
-        }
-
-        .date-section button {
-            background-color: #CFB87C; /* CU Gold */
-            color: #000000; /* Black text */
-            padding: 12px 20px;
-            font-size: 1rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
-            margin-top: 15px;
-        }
-
-        .date-section button:hover {
-            background-color: #E4CFAB; /* Lighter Gold */
-            transform: scale(1.05);
-            box-shadow: 0 4px 10px rgba(207, 184, 124, 0.5);
-        }
     </style>
 </head>
 <body>
@@ -152,27 +118,12 @@
                 </div>
 
                 <div class="form-section">
-                    <label for="shift_date">Shift Date:</label>
-                    <input type="date" name="shift_date" id="shift_date" required>
-                </div>
-
-                <div class="form-section">
                     <button type="submit">Upload Files</button>
                 </div>
             </form>
         </div>
 
         <div class="section-divider"></div>
-
-        <!-- Retrieve Files Section -->
-        <div>
-            <h2 class="section-title">Retrieve Files by Date</h2>
-            <form action="/retrieve-files" method="POST" class="date-section">
-                <label for="date_selection">Select Date:</label>
-                <input type="date" name="date" id="date_selection" required>
-                <button type="submit">Retrieve Files</button>
-            </form>
-        </div>
     </div>
 
     <!-- Footer -->
