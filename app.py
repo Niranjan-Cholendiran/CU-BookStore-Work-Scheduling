@@ -8,8 +8,8 @@ import pandas as pd
 app = Flask(__name__)
 
 # Input and output directories
-INPUT_FOLDER = '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/00_Input/'
-OUTPUT_FOLDER = '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/01_Output/'
+INPUT_FOLDER = '00_Input'
+OUTPUT_FOLDER ='01_Output'
 
 # Route to render the upload form
 @app.route('/')
@@ -39,9 +39,9 @@ def upload_files():
     except Exception as e:
         return jsonify({"error": f"Error saving files: {e}"}), 500
 
-    # Trigger the `test.py` script for processing
+    # Trigger the `Final_Allocation.py` script for processing
     try:
-        subprocess.run(['python', '/Users/saaijeeshsn/Documents/bookstore_local/CU-BookStore-Work-Scheduling/Code/test.py'], check=True) ##TODO
+        subprocess.run(['python', 'Code\Final_Allocation.py'], check=True) ##TODO
         print("Processing script executed successfully.")
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Error running processing script: {e}"}), 500

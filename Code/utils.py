@@ -10,14 +10,13 @@ def transform_time_inout(df):
     '''
     This function adds date to time columns and adjust the 15mins interval end/start shifts to 30-mins interval'''
     # Convert 'Time in' and 'Time out' to datetime with today's date
-    print("\n\n df.head()")
-    print(df.head())
-    print("Columns:")
-    print(df.columns)
-    print("First Row:")
-    print(df.iloc[0,])
-    print("Second Row:")
-    print(df.iloc[1,])
+    # print("\n\n df.head()")
+    # print(df.head())
+    # print(df.columns)
+    # print("First Row:")
+    # print(df.iloc[0,])
+    # print("Second Row:")
+    # print(df.iloc[1,])
     df['Time in'] = pd.to_datetime(df['Time in'], format='%Y-%m-%d %H:%M:%S').apply(lambda x: datetime.combine(today_date, x.time()))
     df['Time out'] = pd.to_datetime(df['Time out'], format='%Y-%m-%d %H:%M:%S').apply(lambda x: datetime.combine(today_date, x.time()))
 
@@ -285,6 +284,7 @@ def convert_df_to_emp_view(df):
                     }
                 dynamo_db_input[emp_name]['Data'].append(data_row)
         
+        # Convert Salesfloor Down
         if row['SF Down'] !='' and row['SF Down'] !=None: 
             emp_names= row['SF Down']
             for emp_name in emp_names:
@@ -292,6 +292,45 @@ def convert_df_to_emp_view(df):
                 # Data row to append
                 data_row={
                     'Location': 'Salesfloor Downstair',
+                    'TimeIn': row['From_Time'],
+                    'TimeOut': row['To_Time']
+                    }
+                dynamo_db_input[emp_name]['Data'].append(data_row)
+
+        # Convert Technology
+        if row['Technology'] !='' and row['Technology'] !=None: 
+            emp_names= row['Technology']
+            for emp_name in emp_names:
+                dynamo_db_input= check_and_assign_new_name_dynamo_dict(dynamo_db_input,emp_name)
+                # Data row to append
+                data_row={
+                    'Location': 'Technology',
+                    'TimeIn': row['From_Time'],
+                    'TimeOut': row['To_Time']
+                    }
+                dynamo_db_input[emp_name]['Data'].append(data_row)
+
+        # Convert Office Work
+        if row['Office Work'] !='' and row['Office Work'] !=None: 
+            emp_names= row['Office Work']
+            for emp_name in emp_names:
+                dynamo_db_input= check_and_assign_new_name_dynamo_dict(dynamo_db_input,emp_name)
+                # Data row to append
+                data_row={
+                    'Location': 'Office Work',
+                    'TimeIn': row['From_Time'],
+                    'TimeOut': row['To_Time']
+                    }
+                dynamo_db_input[emp_name]['Data'].append(data_row)
+
+        # Convert Stockroom
+        if row['Stockroom'] !='' and row['Stockroom'] !=None: 
+            emp_names= row['Stockroom']
+            for emp_name in emp_names:
+                dynamo_db_input= check_and_assign_new_name_dynamo_dict(dynamo_db_input,emp_name)
+                # Data row to append
+                data_row={
+                    'Location': 'Stockroom',
                     'TimeIn': row['From_Time'],
                     'TimeOut': row['To_Time']
                     }
